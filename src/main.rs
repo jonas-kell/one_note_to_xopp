@@ -1,45 +1,52 @@
 use onenote_parser::Parser;
 use onenote_parser::page::{Page, PageContent};
 use onenote_parser::contents::{Outline, EmbeddedFile, Image, Ink};
-use std::path::PathBuf;
 use std::fs;
 
 fn main() {
-    println!("Parsing a .one file");
+    for element in std::path::Path::new(r"./").read_dir().unwrap() {
+        let in_file_path = element.unwrap().path();
+        let filename = in_file_path.file_name().unwrap_or_default().to_string_lossy();
+        
+        if let Some(extension) = in_file_path.extension() {
+            
+            if extension == "one" {
+                println!("Parsing the file {}", filename);
 
-    let path = PathBuf::from("Stuff.one");
-
-    let mut parser = Parser::new();
-
-    let section = parser.parse_section(&path).unwrap();
-
-    let mut file_output = String::from(
+                let mut parser = Parser::new();
+            
+                let section = parser.parse_section(&in_file_path).unwrap();
+            
+                let mut file_output = String::from(
 "<?xml version=\"1.0\" standalone=\"no\"?>
 <xournal creator=\"Xournal++ 1.1.3\" fileversion=\"4\">
 <title>Xournal++ document - see https://github.com/xournalpp/xournalpp</title>\n"
-    );
-
-    let mut fallback_title_index = 0;
-    for page_series in section.page_series() {
-        for page in page_series.pages() {
-            let title = page.title_text().map(|s| s.to_string()).unwrap_or_else(|| {
-                fallback_title_index += 1;
-
-                format!("Untitled Page {}", fallback_title_index)
-            });
-
-            let file_name = title.trim().replace("/", "_");
-            println!("{}", file_name);
-
-            file_output.push_str(&render_page(page));
+                );
+            
+                let mut fallback_title_index = 0;
+                for page_series in section.page_series() {
+                    for page in page_series.pages() {
+                        let title = page.title_text().map(|s| s.to_string()).unwrap_or_else(|| {
+                            fallback_title_index += 1;
+            
+                            format!("Untitled Page {}", fallback_title_index)
+                        });
+            
+                        let file_name = title.trim().replace("/", "_");
+                        println!("{}", file_name);
+            
+                        file_output.push_str(&render_page(page));
+                    }
+                }
+            
+                file_output.push_str("</xournal>");
+            
+                println!("{}", file_output);
+            
+                fs::write("out.xml", file_output).expect("Couldn't write file");
+            }
         }
     }
-
-    file_output.push_str("</xournal>");
-
-    println!("{}", file_output);
-
-    fs::write("out.xml", file_output).expect("Couldn't write file");
 }
 
 pub(crate) fn render_page(page: &Page) -> String {
@@ -90,7 +97,7 @@ fn render_embedded_file(_outline: &EmbeddedFile) -> String {
 }
 
 fn render_ink(_outline: &Ink) -> String {
-    println!("{}", "render ink");
+    // println!("{}", "render ink");
 
     return String::from("");
 }

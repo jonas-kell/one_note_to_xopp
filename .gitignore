@@ -4,3 +4,4 @@ Cargo.lock
 *.one
 *.xml
 *.xopp
+*.gz
