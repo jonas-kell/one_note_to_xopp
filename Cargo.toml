@@ -1,0 +1,7 @@
+[package]
+name = "one_note_xml_extractor"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+onenote_parser = { version = "0.3.0", default-features = false }
