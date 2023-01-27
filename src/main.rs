@@ -1,6 +1,10 @@
 use onenote_parser::Parser;
 use onenote_parser::page::{Page, PageContent};
 use onenote_parser::contents::{Outline, EmbeddedFile, Image, Ink};
+use std::fs::File;
+use std::io::prelude::*;
+use flate2::GzBuilder;
+use flate2::Compression;
 use std::fs;
 
 fn main() {
@@ -9,8 +13,8 @@ fn main() {
         let filename = in_file_path.file_name().unwrap_or_default().to_string_lossy();
         
         if let Some(extension) = in_file_path.extension() {
-            
             if extension == "one" {
+                let file_name_without_extension = in_file_path.file_stem().unwrap_or_default().to_string_lossy();
                 println!("Parsing the file {}", filename);
 
                 let mut parser = Parser::new();
@@ -41,9 +45,18 @@ fn main() {
             
                 file_output.push_str("</xournal>");
             
+                // print for debug
                 println!("{}", file_output);
-            
-                fs::write("out.xml", file_output).expect("Couldn't write file");
+                // export to xml for debug
+                fs::write(format!("{}.xml", file_name_without_extension), file_output.clone()).expect("Couldn't write xml file");
+                // gzip and export into xopp format
+                let f = File::create(format!("{}.xopp", file_name_without_extension)).expect("Couldn't create .xopp file");
+                let mut gz = GzBuilder::new()
+                                .filename(format!("{}.xml", file_name_without_extension))
+                                .comment("Output file")
+                                .write(f, Compression::default());
+                gz.write_all(&(file_output.into_bytes())).expect("Couldn't write .xopp file");
+                gz.finish().expect("Couldn't close .xopp file");
             }
         }
     }
