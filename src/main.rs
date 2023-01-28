@@ -1,6 +1,7 @@
 use onenote_parser::Parser;
 use onenote_parser::page::{Page, PageContent};
-use onenote_parser::contents::{Outline, EmbeddedFile, Image, Ink};
+use onenote_parser::contents::{EmbeddedFile, Image, Ink, OutlineElement, RichText, Table, Outline, OutlineItem};
+use onenote_parser::contents::Content;
 use std::fs::File;
 use std::io::prelude::*;
 use flate2::GzBuilder;
@@ -46,7 +47,7 @@ fn main() {
                 file_output.push_str("</xournal>");
             
                 // print for debug
-                println!("{}", file_output);
+                // println!("{}", file_output);
                 // export to xml for debug
                 fs::write(format!("{}.xml", file_name_without_extension), file_output.clone()).expect("Couldn't write xml file");
                 // gzip and export into xopp format
@@ -87,30 +88,86 @@ fn render_page_content(content: &PageContent) -> String {
         PageContent::Image(image) => render_image(image),
         PageContent::EmbeddedFile(file) => render_embedded_file(file),
         PageContent::Ink(ink) => render_ink(ink),
-        PageContent::Unknown => String::new(),
+        PageContent::Unknown => {
+            println!("Page with unknown content");
+            String::new()
+        }
     }
 }
 
-fn render_outline(_outline: &Outline) -> String {
-    println!("{}", "Rendering Outline not implemented");
+fn render_outline(outline: &Outline) -> String {
+    let mut contents = String::new();
+    
+    for outline_element in flatten_outline_items(outline.items()) {
 
-    return String::from("");
+        if !outline_element.children().is_empty() {
+            println!("Outline has children. These are table items which are not being handled");
+        }
+    
+        let outline_content: String = outline_element
+            .contents()
+            .iter()
+            .map(|content| render_outline_content(content))
+            .collect();
+        contents.push_str(&outline_content);
+    }
+
+    return contents;
 }
 
-fn render_image(_outline: &Image) -> String {
+fn flatten_outline_items<'a>(
+    items: &'a [OutlineItem]
+) -> Box<dyn Iterator<Item = &'a OutlineElement> + 'a> {
+    Box::new(items.iter().flat_map(move |item| match item {
+        OutlineItem::Element(element) => {
+            Box::new(Some(element).into_iter())
+        }
+        OutlineItem::Group(group) => flatten_outline_items(
+            group.outlines(),
+        ),
+    }))
+}
+
+fn render_outline_content(content: &Content) -> String {
+    match content {
+        Content::RichText(text) => render_rich_text(text),
+        Content::Image(image) => render_image(image),
+        Content::EmbeddedFile(file) => render_embedded_file(file),
+        Content::Table(table) => render_table(table),
+        Content::Ink(ink) => render_ink(ink),
+        Content::Unknown => {
+            println!("Outline with unknown content");
+            String::new()
+        }
+    }
+}
+
+fn render_image(_image: &Image) -> String {
     println!("{}", "Render image");
 
     return String::from("");
 }
 
-fn render_embedded_file(_outline: &EmbeddedFile) -> String {
+fn render_table(_table: &Table) -> String {
+    println!("{}", "Rendering tables not implemented");
+
+    return String::from("");
+}
+
+fn render_rich_text(_text: &RichText) -> String {
+    println!("{}", "Rendering rich text not implemented");
+
+    return String::from("");
+}
+
+fn render_embedded_file(_file: &EmbeddedFile) -> String {
     println!("{}", "Rendering embedded file not implemented");
 
     return String::from("");
 }
 
-fn render_ink(_outline: &Ink) -> String {
-    // println!("{}", "render ink");
+fn render_ink(_ink: &Ink) -> String {
+    println!("{}", "Render ink");
 
     return String::from("");
 }
