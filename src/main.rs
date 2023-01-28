@@ -26,6 +26,8 @@ const INK_SCALING_FACTOR: f32 = TOTAL_SCALING_FACTOR * 16.0 / 1000.0; // fixed (
 const INK_OFFSET_SCALING_FACTOR: f32 = 1270.0; // fixed (fit paramter)
 
 fn main() {
+    let mut nr_processed_files = 0;
+
     for element in std::path::Path::new(r"./").read_dir().unwrap() {
         let in_file_path = element.unwrap().path();
         let filename = in_file_path.file_name().unwrap_or_default().to_string_lossy();
@@ -54,6 +56,7 @@ fn main() {
                         
                         if SPLIT_PAGES {
                             output_file(render_page(page), file_name);
+                            nr_processed_files += 1;
                         } else {
                             pages_cache.push_str(&render_page(page));
                         }
@@ -62,9 +65,14 @@ fn main() {
 
                 if !SPLIT_PAGES {
                     output_file(pages_cache, String::from(file_name_without_extension));
+                    nr_processed_files += 1;
                 }
             }
         }
+    }
+
+    if nr_processed_files == 0 {
+        println!("No '*.one' file found in the execution folder.");
     }
 }
 

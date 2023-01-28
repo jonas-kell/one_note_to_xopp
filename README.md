@@ -13,27 +13,24 @@ The code uses his package [Rust OneNote® File Parser](https://github.com/msieme
 
 ## Installation
 
-At the moment only installation from source is supported. This requires the latest stable [Rust](https://www.rust-lang.org/) compiler. Once you've installed the Rust toolchain run:
-
-```cmd
-cargo install one_note_to_xopp
-```
-
-Alternatively you could run
+At the moment only compiling from source is supported.
+This requires the latest stable [Rust](https://www.rust-lang.org/) compiler. Once you've installed the Rust toolchain run:
 
 ```cmd
 git clone https://github.com/jonas-kell/one_note_to_xopp
 cd one_note_to_xopp
-cargo run
+cargo build --release
 ```
 
 ## Usage
 
-When the executable is run inside a folder it will take all the `.one` files from that folder as inputs and spit out the converted `.xopp` files into the same folder.
+When the produced executable is run inside a folder it will take all the `.one` files from that folder as inputs and spit out the converted `.xopp` files into the same folder.
 
 ```cmd
- ~/.cargo/bin/one_note_to_xopp
+ ./target/release/one_note_to_xopp
 ```
+
+(Of course this is the execution syntax for linux, that assumes you are still in the git repository. You can move the compiled executable into any folder you like, even into folders in `Path`, to get systemwide access. Append `.exe` for Windows).
 
 ## Where to get my .one files
 
