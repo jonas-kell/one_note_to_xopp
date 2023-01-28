@@ -15,9 +15,9 @@ const MIN_PAGE_PADDING: f32 = 30.0;
 const SPLIT_PAGES: bool = true;
 
 const TOTAL_SCALING_FACTOR: f32 = 1.0;
-const OUTLINE_OFFSET_FACTOR: f32 = 20.0; // fixed (fit parameter) - so far not completely working, // TODO mistake in leaving out indent system?
+const OUTLINE_OFFSET_FACTOR: f32 = 20.0; // fixed (fit parameter)
 const IMAGE_SCALING_FACTOR: f32 = TOTAL_SCALING_FACTOR * 20.0; // fixed (fit parameter)
-const IMAGE_OFFSET_FACTOR: f32 = 1.0; // fixed (fit parameter - so far no examples where this was needed)
+const IMAGE_OFFSET_FACTOR: f32 = 20.0; // fixed (fit parameter)
 const INK_WIDTH_SCALING_FACTOR: f32 = 1.0;
 const INK_SCALING_FACTOR: f32 = TOTAL_SCALING_FACTOR * 16.0 / 1000.0; // fixed (fit paramter)
 const INK_OFFSET_SCALING_FACTOR: f32 = 1270.0; // fixed (fit paramter)
@@ -183,6 +183,7 @@ fn render_image(image: &Image, outline_offset: Option<(f32, f32)>, size_watcher:
     // println!("height:{}", height);
     // println!("offset_horizontal:{}", offset_horizontal);
     // println!("offset_vertical:{}", offset_vertical);
+    println!("outline_offset_h:{} outline_offset_v:{}", outline_offset.unwrap_or((0.0, 0.0)).0, outline_offset.unwrap_or((0.0, 0.0)).1);
 
     let mut image_content = String::from(format!("<image left=\"{}\" top=\"{}\" right=\"{}\" bottom=\"{}\">", 
                                                                 size_watcher.check_x(offset_horizontal), 
