@@ -217,36 +217,37 @@ fn render_ink(ink: &Ink) -> String {
     
     let mut image_content = String::new();
     for ink_stroke in ink.ink_strokes() {
-
-        let color = if let Some(value) = ink_stroke.color() {
-            let r = value % 256;
+        if ink_stroke.path().len() >= 4 { // if not enough points, will fail
+            let color = if let Some(value) = ink_stroke.color() {
+                let r = value % 256;
+        
+                let rem = (value - r) / 256;
+                let g = rem % 256;
+        
+                let rem = (rem - g) / 256;
+                let b = rem % 256;
+        
+                format!("#{:x}{:x}{:x}ff", r, g, b)
+            } else {
+                "black".to_string()
+            };
     
-            let rem = (value - r) / 256;
-            let g = rem % 256;
+            let width = (1.41 * INK_WIDTH_SCALING_FACTOR).to_string(); // Overwritten, // TODO dynamic e.g. (ink_stroke.width() * INK_WIDTH_SCALING_FACTOR).round().to_string();
     
-            let rem = (rem - g) / 256;
-            let b = rem % 256;
+            image_content.push_str(&format!("<stroke tool=\"{}\" color=\"{}\" width=\"{}\">", "pen", color, width));
     
-            format!("#{:x}{:x}{:x}ff", r, g, b)
-        } else {
-            "black".to_string()
-        };
-
-        let width = (1.41 * INK_WIDTH_SCALING_FACTOR).to_string(); // Overwritten, // TODO dynamic e.g. (ink_stroke.width() * INK_WIDTH_SCALING_FACTOR).round().to_string();
-
-        image_content.push_str(&format!("<stroke tool=\"{}\" color=\"{}\" width=\"{}\">", "pen", color, width));
-
-        let start = ink_stroke.path()[0];
-        let mut last_x = start.x() + offset_horizontal * INK_OFFSET_SCALING_FACTOR;
-        let mut last_y = start.y() + offset_vertical * INK_OFFSET_SCALING_FACTOR;
-
-        image_content.push_str(&format!("{} {} ", last_x * INK_SCALING_FACTOR, last_y * INK_SCALING_FACTOR));
-        for point in ink_stroke.path()[1..].iter() {
-            image_content.push_str(&format!("{} {} ", (last_x + point.x()) * INK_SCALING_FACTOR, (last_y + point.y()) * INK_SCALING_FACTOR));
-            last_x = last_x + point.x();
-            last_y = last_y + point.y();
+            let start = ink_stroke.path()[0];
+            let mut last_x = start.x() + offset_horizontal * INK_OFFSET_SCALING_FACTOR;
+            let mut last_y = start.y() + offset_vertical * INK_OFFSET_SCALING_FACTOR;
+    
+            image_content.push_str(&format!("{} {} ", last_x * INK_SCALING_FACTOR, last_y * INK_SCALING_FACTOR));
+            for point in ink_stroke.path()[1..].iter() {
+                image_content.push_str(&format!("{} {} ", (last_x + point.x()) * INK_SCALING_FACTOR, (last_y + point.y()) * INK_SCALING_FACTOR));
+                last_x = last_x + point.x();
+                last_y = last_y + point.y();
+            }
+            image_content.push_str("</stroke>\n");
         }
-        image_content.push_str("</stroke>\n");
     }
 
     return image_content;
