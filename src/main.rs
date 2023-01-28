@@ -10,8 +10,8 @@ use std::fs;
 use base64::{engine::general_purpose, Engine as _};
 
 const PAGE_COORDINATES_FACTOR: f32 = 20.0;
-const PAGE_WIDTH: f32 = 595.27559100;
-const PAGE_HEIGHT: f32 = 841.88976400;
+const A4_PAGE_WIDTH: f32 = 595.27559100;
+const A4_PAGE_HEIGHT: f32 = 841.88976400;
 const INK_SCALING_FACTOR: f32 = 20.0 / 1000.0;
 const INK_WIDTH_SCALING_FACTOR: f32 = 1.0;
 const INK_OFFSET_SCALING_FACTOR: f32 = 1285.0;
@@ -75,7 +75,7 @@ pub(crate) fn render_page(page: &Page) -> String {
     let mut page_output = String::from(
 format!("<page width=\"{}\" height=\"{}\">
 <background type=\"solid\" color=\"#ffffffff\" style=\"graph\"/>
-<layer>\n", PAGE_WIDTH, PAGE_HEIGHT)
+<layer>\n", A4_PAGE_WIDTH, A4_PAGE_HEIGHT)
             );
 
     let page_content: String = page
@@ -204,7 +204,7 @@ fn render_ink(ink: &Ink) -> String {
         .offset_vertical()
         .unwrap_or_default();
     // println!("offset_horizontal: {}, offset_vertical: {}", offset_horizontal, offset_vertical);
-    
+
     // let display_bounding_box = ink
     //     .bounding_box();
     // let display_y_min = display_bounding_box.map(|bb| bb.y()).unwrap_or_default();
