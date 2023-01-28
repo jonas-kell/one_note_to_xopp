@@ -20,7 +20,7 @@ const IMAGE_SCALING_FACTOR: f32 = TOTAL_SCALING_FACTOR * 20.0; // fixed (fit par
 const IMAGE_OFFSET_FACTOR: f32 = 1.0; // fixed (fit parameter - so far no examples where this was needed)
 const INK_WIDTH_SCALING_FACTOR: f32 = 1.0;
 const INK_SCALING_FACTOR: f32 = TOTAL_SCALING_FACTOR * 16.0 / 1000.0; // fixed (fit paramter)
-const INK_OFFSET_SCALING_FACTOR: f32 = 1285.0; // fixed (fit paramter)
+const INK_OFFSET_SCALING_FACTOR: f32 = 1270.0; // fixed (fit paramter)
 
 fn main() {
     for element in std::path::Path::new(r"./").read_dir().unwrap() {
