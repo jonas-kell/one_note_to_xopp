@@ -12,8 +12,9 @@ use base64::{engine::general_purpose, Engine as _};
 const PAGE_COORDINATES_FACTOR: f32 = 20.0;
 const PAGE_WIDTH: f32 = 595.27559100;
 const PAGE_HEIGHT: f32 = 841.88976400;
-const INK_SCALING_FACTOR: f32 = 50.0 / 1000.0;
+const INK_SCALING_FACTOR: f32 = 20.0 / 1000.0;
 const INK_WIDTH_SCALING_FACTOR: f32 = 1.0;
+const INK_OFFSET_SCALING_FACTOR: f32 = 1285.0;
 
 fn main() {
     for element in std::path::Path::new(r"./").read_dir().unwrap() {
@@ -202,11 +203,12 @@ fn render_ink(ink: &Ink) -> String {
     let offset_vertical = ink
         .offset_vertical()
         .unwrap_or_default();
+    // println!("offset_horizontal: {}, offset_vertical: {}", offset_horizontal, offset_vertical);
+    
     // let display_bounding_box = ink
     //     .bounding_box();
     // let display_y_min = display_bounding_box.map(|bb| bb.y()).unwrap_or_default();
     // let display_x_min = display_bounding_box.map(|bb| bb.x()).unwrap_or_default();
-    println!("offset_horizontal: {}, offset_vertical: {}", offset_horizontal, offset_vertical);
     // println!("display_x_min: {}, display_y_min: {}", display_x_min, display_y_min);
     
     let mut image_content = String::new();
@@ -231,12 +233,14 @@ fn render_ink(ink: &Ink) -> String {
         image_content.push_str(&format!("<stroke tool=\"{}\" color=\"{}\" width=\"{}\">", "pen", color, width));
 
         let start = ink_stroke.path()[0];
-        let start_x = start.x();// + offset_horizontal * 48.0;
-        let start_y = start.y();// + offset_vertical * 48.0;
+        let mut last_x = start.x() + offset_horizontal * INK_OFFSET_SCALING_FACTOR;
+        let mut last_y = start.y() + offset_vertical * INK_OFFSET_SCALING_FACTOR;
 
-        image_content.push_str(&format!("{} {} ", start_x * INK_SCALING_FACTOR, start_y * INK_SCALING_FACTOR));
+        image_content.push_str(&format!("{} {} ", last_x * INK_SCALING_FACTOR, last_y * INK_SCALING_FACTOR));
         for point in ink_stroke.path()[1..].iter() {
-            image_content.push_str(&format!("{} {} ", (start_x + point.x()) * INK_SCALING_FACTOR, (start_y + point.y()) * INK_SCALING_FACTOR))
+            image_content.push_str(&format!("{} {} ", (last_x + point.x()) * INK_SCALING_FACTOR, (last_y + point.y()) * INK_SCALING_FACTOR));
+            last_x = last_x + point.x();
+            last_y = last_y + point.y();
         }
         image_content.push_str("</stroke>\n");
     }
