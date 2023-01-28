@@ -32,6 +32,14 @@ When the produced executable is run inside a folder it will take all the `.one` 
 
 (Of course this is the execution syntax for linux, that assumes you are still in the git repository. You can move the compiled executable into any folder you like, even into folders in `Path`, to get systemwide access. Append `.exe` for Windows).
 
+## CLI Arguments
+
+The behavior can be adapted with CLI Arguments. They are documented when running
+
+```cmd
+ ./target/release/one_note_to_xopp --help
+```
+
 ## Where to get my .one files
 
 To acquire the .one files from cour OneDrive, take a look [here](https://github.com/msiemens/one2html#usage).
