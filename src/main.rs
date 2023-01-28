@@ -11,6 +11,8 @@ use base64::{engine::general_purpose, Engine as _};
 
 const A4_PAGE_WIDTH: f32 = 595.27559100;
 const A4_PAGE_HEIGHT: f32 = 841.88976400;
+const SPLIT_PAGES: bool = true;
+
 const TOTAL_SCALING_FACTOR: f32 = 1.0;
 const OUTLINE_OFFSET_FACTOR: f32 = 20.0; // fixed (fit parameter) - so far not completely working, // TODO indent system
 const IMAGE_SCALING_FACTOR: f32 = TOTAL_SCALING_FACTOR * 20.0; // fixed (fit parameter)
@@ -30,62 +32,74 @@ fn main() {
                 println!("Parsing the file {}", filename);
 
                 let mut parser = Parser::new();
-            
                 let section = parser.parse_section(&in_file_path).unwrap();
             
-                let mut file_output = String::from(
-"<?xml version=\"1.0\" standalone=\"no\"?>
-<xournal creator=\"Xournal++ 1.1.3\" fileversion=\"4\">
-<title>Xournal++ document - see https://github.com/xournalpp/xournalpp</title>\n"
-                );
-            
+                let mut pages_cache = String::new();
+
                 let mut fallback_title_index = 0;
                 for page_series in section.page_series() {
                     for page in page_series.pages() {
                         let title = page.title_text().map(|s| s.to_string()).unwrap_or_else(|| {
                             fallback_title_index += 1;
-            
+
                             format!("Untitled Page {}", fallback_title_index)
                         });
-            
-                        let file_name = title.trim().replace("/", "_");
-                        println!("{}", file_name);
-            
-                        file_output.push_str(&render_page(page));
+
+                        let page_name = title.trim().replace("/", "_");
+                        let file_name = sanitize_filename::sanitize(format!("{} - {}", file_name_without_extension, page_name));
+                        
+                        if SPLIT_PAGES {
+                            output_file(render_page(page), file_name);
+                        } else {
+                            pages_cache.push_str(&render_page(page));
+                        }
                     }
                 }
-            
-                file_output.push_str("</xournal>");
-            
-                // print for debug
-                // println!("{}", file_output);
-                // export to xml for debug
-                fs::write(format!("{}.xml", file_name_without_extension), file_output.clone()).expect("Couldn't write xml file");
-                // gzip and export into xopp format
-                let f = File::create(format!("{}.xopp", file_name_without_extension)).expect("Couldn't create .xopp file");
-                let mut gz = GzBuilder::new()
-                                .filename(format!("{}.xml", file_name_without_extension))
-                                .comment("Output file")
-                                .write(f, Compression::default());
-                gz.write_all(&(file_output.into_bytes())).expect("Couldn't write .xopp file");
-                gz.finish().expect("Couldn't close .xopp file");
+
+                if !SPLIT_PAGES {
+                    output_file(pages_cache, String::from(file_name_without_extension));
+                }
             }
         }
     }
 }
 
-pub(crate) fn render_page(page: &Page) -> String {
-    let mut page_output = String::from(
-format!("<page width=\"{}\" height=\"{}\">
-<background type=\"solid\" color=\"#ffffffff\" style=\"graph\"/>
-<layer>\n", A4_PAGE_WIDTH, A4_PAGE_HEIGHT)
-            );
+fn output_file(page_xml: String, file_name: String) {
+    let mut file_output = String::from(
+        "<?xml version=\"1.0\" standalone=\"no\"?>
+        <xournal creator=\"Xournal++ 1.1.3\" fileversion=\"4\">
+        <title>Xournal++ document - see https://github.com/xournalpp/xournalpp</title>\n"
+                        );
+                    
+    file_output.push_str(&page_xml);
+
+    file_output.push_str("</xournal>");
+
+    // export to xml for debug
+    fs::write(format!("{}.xml", file_name), file_output.clone()).expect("Couldn't write xml file");
+    // gzip and export into xopp format
+    let f = File::create(format!("{}.xopp", file_name)).expect("Couldn't create .xopp file");
+    let mut gz = GzBuilder::new()
+                    .filename(format!("{}.xml", file_name))
+                    .comment("Output file")
+                    .write(f, Compression::default());
+    gz.write_all(&(file_output.into_bytes())).expect("Couldn't write .xopp file");
+    gz.finish().expect("Couldn't close .xopp file");
+}
+
+fn render_page(page: &Page) -> String {
+    let mut page_output = String::new();
 
     let page_content: String = page
         .contents()
         .iter()
         .map(|content| render_page_content(content))
         .collect();
+
+    page_output.push_str(&format!("<page width=\"{}\" height=\"{}\">
+        <background type=\"solid\" color=\"#ffffffff\" style=\"graph\"/>
+        <layer>\n", A4_PAGE_WIDTH, A4_PAGE_HEIGHT));
+
     page_output.push_str(&page_content);
 
     page_output.push_str("</layer>\n</page>\n");

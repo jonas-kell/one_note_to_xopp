@@ -7,3 +7,4 @@ edition = "2021"
 onenote_parser = { version = "0.3.0", default-features = false }
 flate2 = "1.0.25"
 base64 = "0.21.0"
+sanitize-filename = "0.4.0"
