@@ -1,3 +1,7 @@
+#[macro_use]
+extern crate lazy_static;
+use crate::cli::Opt;
+use structopt::StructOpt;
 use onenote_parser::Parser;
 use onenote_parser::page::{Page, PageContent};
 use onenote_parser::contents::{EmbeddedFile, Image, Ink, OutlineElement, RichText, Table, Outline, OutlineItem};
@@ -9,24 +13,15 @@ use flate2::Compression;
 use std::fs;
 use base64::{engine::general_purpose, Engine as _};
 
-// !! Begin changable parameters
-const WRITE_XML_FOR_DEBUG: bool = false;
-const MIN_PAGE_PADDING: f32 = 30.0;
-const SPLIT_PAGES: bool = true;
-const TOTAL_SCALING_FACTOR: f32 = 1.0;
-const INK_WIDTH_SCALING_FACTOR: f32 = 1.0;
-// !! End changable parameters
+mod cli;
 
-const A4_PAGE_WIDTH: f32 = 595.27559100; // fixed (is a fact)
-const A4_PAGE_HEIGHT: f32 = 841.88976400; // fixed (is a fact)
-const OUTLINE_OFFSET_FACTOR: f32 = TOTAL_SCALING_FACTOR * 20.0; // fixed (fit parameter)
-const IMAGE_SCALING_FACTOR: f32 = TOTAL_SCALING_FACTOR * 20.0; // fixed (fit parameter)
-const IMAGE_OFFSET_FACTOR: f32 = TOTAL_SCALING_FACTOR * 20.0; // fixed (fit parameter)
-const INK_SCALING_FACTOR: f32 = TOTAL_SCALING_FACTOR * 16.0 / 1000.0; // fixed (fit paramter)
-const INK_OFFSET_SCALING_FACTOR: f32 = 1270.0; // fixed (fit paramter)
+lazy_static! {
+    pub static ref CFG: Opt = Opt::from_args();
+}
 
 fn main() {
     let mut nr_processed_files = 0;
+    CFG.output_xml; // forces the lazy_static execution and make sure help is displayed 
 
     for element in std::path::Path::new(r"./").read_dir().unwrap() {
         let in_file_path = element.unwrap().path();
@@ -54,7 +49,7 @@ fn main() {
                         let page_name = title.trim().replace("/", "_");
                         let file_name = sanitize_filename::sanitize(format!("{} - {}", file_name_without_extension, page_name));
                         
-                        if SPLIT_PAGES {
+                        if !CFG.aggregate_pages {
                             output_file(render_page(page), file_name);
                             nr_processed_files += 1;
                         } else {
@@ -63,7 +58,7 @@ fn main() {
                     }
                 }
 
-                if !SPLIT_PAGES {
+                if CFG.aggregate_pages {
                     output_file(pages_cache, String::from(file_name_without_extension));
                     nr_processed_files += 1;
                 }
@@ -88,7 +83,7 @@ fn output_file(page_xml: String, file_name: String) {
     file_output.push_str("</xournal>");
 
     // export to xml for debug
-    if WRITE_XML_FOR_DEBUG {
+    if CFG.output_xml {
         fs::write(format!("{}.xml", file_name), file_output.clone()).expect("Couldn't write xml file");
     }
 
@@ -115,7 +110,7 @@ fn render_page(page: &Page) -> String {
 
     page_output.push_str(&format!("<page width=\"{}\" height=\"{}\">
         <background type=\"solid\" color=\"#ffffffff\" style=\"graph\"/>
-        <layer>\n", size_watcher.size_x + MIN_PAGE_PADDING, size_watcher.size_y + MIN_PAGE_PADDING));
+        <layer>\n", size_watcher.size_x + CFG.page_padding, size_watcher.size_y + CFG.page_padding));
 
     page_output.push_str(&page_content);
 
@@ -188,10 +183,10 @@ fn render_outline_content(content: &Content, outline_offset: Option<(f32, f32)>,
 fn render_image(image: &Image, outline_offset: Option<(f32, f32)>, size_watcher: &mut SizeWatcher) -> String {
     let image_base_64: String = general_purpose::STANDARD.encode(&image.data().unwrap_or_default());
 
-    let width= image.layout_max_width().unwrap_or_else(|| 100.0) * IMAGE_SCALING_FACTOR;
-    let height = image.layout_max_height().unwrap_or_else(|| 100.0) * IMAGE_SCALING_FACTOR;
-    let offset_horizontal = image.offset_horizontal().unwrap_or_else(|| 0.0) * IMAGE_OFFSET_FACTOR + outline_offset.unwrap_or((0.0, 0.0)).0 * OUTLINE_OFFSET_FACTOR;
-    let offset_vertical = image.offset_vertical().unwrap_or_else(|| 0.0) * IMAGE_OFFSET_FACTOR + outline_offset.unwrap_or((0.0, 0.0)).1 * OUTLINE_OFFSET_FACTOR;
+    let width= image.layout_max_width().unwrap_or_else(|| 100.0) * CFG.image_scaling_factor();
+    let height = image.layout_max_height().unwrap_or_else(|| 100.0) * CFG.image_scaling_factor();
+    let offset_horizontal = image.offset_horizontal().unwrap_or_else(|| 0.0) * CFG.image_offset_factor() + outline_offset.unwrap_or((0.0, 0.0)).0 * CFG.outline_offset_factor();
+    let offset_vertical = image.offset_vertical().unwrap_or_else(|| 0.0) * CFG.image_offset_factor() + outline_offset.unwrap_or((0.0, 0.0)).1 * CFG.outline_offset_factor();
 
     // println!("width:{}", width);
     // println!("height:{}", height);
@@ -264,17 +259,17 @@ fn render_ink(ink: &Ink, size_watcher: &mut SizeWatcher) -> String {
                 "black".to_string()
             };
     
-            let width = (1.41 * INK_WIDTH_SCALING_FACTOR).to_string(); // Overwritten, // TODO dynamic e.g. (ink_stroke.width() * INK_WIDTH_SCALING_FACTOR).round().to_string();
+            let width = (1.41 * CFG.ink_width_factor).to_string(); // TODO dynamic e.g. (ink_stroke.width() * INK_WIDTH_SCALING_FACTOR).round().to_string();
     
             image_content.push_str(&format!("<stroke tool=\"{}\" color=\"{}\" width=\"{}\">", "pen", color, width));
     
             let start = ink_stroke.path()[0];
-            let mut last_x = start.x() + offset_horizontal * INK_OFFSET_SCALING_FACTOR;
-            let mut last_y = start.y() + offset_vertical * INK_OFFSET_SCALING_FACTOR;
+            let mut last_x = start.x() + offset_horizontal * CFG.ink_offset_factor();
+            let mut last_y = start.y() + offset_vertical * CFG.ink_offset_factor();
     
-            image_content.push_str(&format!("{} {} ", size_watcher.check_x(last_x * INK_SCALING_FACTOR), size_watcher.check_y(last_y * INK_SCALING_FACTOR)));
+            image_content.push_str(&format!("{} {} ", size_watcher.check_x(last_x * CFG.ink_scaling_factor()), size_watcher.check_y(last_y * CFG.ink_scaling_factor())));
             for point in ink_stroke.path()[1..].iter() {
-                image_content.push_str(&format!("{} {} ", size_watcher.check_x((last_x + point.x()) * INK_SCALING_FACTOR), size_watcher.check_y((last_y + point.y()) * INK_SCALING_FACTOR)));
+                image_content.push_str(&format!("{} {} ", size_watcher.check_x((last_x + point.x()) * CFG.ink_scaling_factor()), size_watcher.check_y((last_y + point.y()) * CFG.ink_scaling_factor())));
                 last_x = last_x + point.x();
                 last_y = last_y + point.y();
             }
@@ -293,8 +288,8 @@ struct SizeWatcher {
 impl SizeWatcher {
     pub fn new() -> SizeWatcher {
         SizeWatcher {
-            size_x: A4_PAGE_WIDTH,
-            size_y: A4_PAGE_HEIGHT,
+            size_x: CFG.a4_page_width,
+            size_y: CFG.a4_page_height,
         }
     }
 
