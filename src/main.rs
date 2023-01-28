@@ -9,6 +9,12 @@ use flate2::Compression;
 use std::fs;
 use base64::{engine::general_purpose, Engine as _};
 
+const PAGE_COORDINATES_FACTOR: f32 = 20.0;
+const PAGE_WIDTH: f32 = 595.27559100;
+const PAGE_HEIGHT: f32 = 841.88976400;
+const INK_SCALING_FACTOR: f32 = 50.0 / 1000.0;
+const INK_WIDTH_SCALING_FACTOR: f32 = 1.0;
+
 fn main() {
     for element in std::path::Path::new(r"./").read_dir().unwrap() {
         let in_file_path = element.unwrap().path();
@@ -66,9 +72,9 @@ fn main() {
 
 pub(crate) fn render_page(page: &Page) -> String {
     let mut page_output = String::from(
-"<page width=\"595.27559100\" height=\"841.88976400\">
+format!("<page width=\"{}\" height=\"{}\">
 <background type=\"solid\" color=\"#ffffffff\" style=\"graph\"/>
-<layer>\n"
+<layer>\n", PAGE_WIDTH, PAGE_HEIGHT)
             );
 
     let page_content: String = page
@@ -185,12 +191,59 @@ fn render_embedded_file(_file: &EmbeddedFile) -> String {
     return String::from("");
 }
 
-fn render_ink(_ink: &Ink) -> String {
-    println!("{}", "Render ink");
+fn render_ink(ink: &Ink) -> String {
+    if ink.ink_strokes().is_empty() {
+        return String::new();
+    }
 
-    return String::from("");
+    let offset_horizontal = ink
+            .offset_horizontal()
+            .unwrap_or_default();
+    let offset_vertical = ink
+        .offset_vertical()
+        .unwrap_or_default();
+    // let display_bounding_box = ink
+    //     .bounding_box();
+    // let display_y_min = display_bounding_box.map(|bb| bb.y()).unwrap_or_default();
+    // let display_x_min = display_bounding_box.map(|bb| bb.x()).unwrap_or_default();
+    println!("offset_horizontal: {}, offset_vertical: {}", offset_horizontal, offset_vertical);
+    // println!("display_x_min: {}, display_y_min: {}", display_x_min, display_y_min);
+    
+    let mut image_content = String::new();
+    for ink_stroke in ink.ink_strokes() {
+
+        let color = if let Some(value) = ink_stroke.color() {
+            let r = value % 256;
+    
+            let rem = (value - r) / 256;
+            let g = rem % 256;
+    
+            let rem = (rem - g) / 256;
+            let b = rem % 256;
+    
+            format!("#{:x}{:x}{:x}", r, g, b)
+        } else {
+            "black".to_string()
+        };
+
+        let width = (1.41 * INK_WIDTH_SCALING_FACTOR).to_string(); // Overwritten, // TODO dynamic e.g. (ink_stroke.width() * INK_WIDTH_SCALING_FACTOR).round().to_string();
+
+        image_content.push_str(&format!("<stroke tool=\"{}\" color=\"{}\" width=\"{}\">", "pen", color, width));
+
+        let start = ink_stroke.path()[0];
+        let start_x = start.x();// + offset_horizontal * 48.0;
+        let start_y = start.y();// + offset_vertical * 48.0;
+
+        image_content.push_str(&format!("{} {} ", start_x * INK_SCALING_FACTOR, start_y * INK_SCALING_FACTOR));
+        for point in ink_stroke.path()[1..].iter() {
+            image_content.push_str(&format!("{} {} ", (start_x + point.x()) * INK_SCALING_FACTOR, (start_y + point.y()) * INK_SCALING_FACTOR))
+        }
+        image_content.push_str("</stroke>\n");
+    }
+
+    return image_content;
 }
 
 fn page_coordinates(inches: f32) -> String {
-    format!("{}", (inches * 20.0).round())
+    format!("{}", (inches * PAGE_COORDINATES_FACTOR).round())
 }
