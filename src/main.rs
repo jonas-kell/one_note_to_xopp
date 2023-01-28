@@ -9,16 +9,19 @@ use flate2::Compression;
 use std::fs;
 use base64::{engine::general_purpose, Engine as _};
 
-const A4_PAGE_WIDTH: f32 = 595.27559100;
-const A4_PAGE_HEIGHT: f32 = 841.88976400;
+// !! Begin changable parameters
+const WRITE_XML_FOR_DEBUG: bool = false;
 const MIN_PAGE_PADDING: f32 = 30.0;
 const SPLIT_PAGES: bool = true;
-
 const TOTAL_SCALING_FACTOR: f32 = 1.0;
-const OUTLINE_OFFSET_FACTOR: f32 = 20.0; // fixed (fit parameter)
-const IMAGE_SCALING_FACTOR: f32 = TOTAL_SCALING_FACTOR * 20.0; // fixed (fit parameter)
-const IMAGE_OFFSET_FACTOR: f32 = 20.0; // fixed (fit parameter)
 const INK_WIDTH_SCALING_FACTOR: f32 = 1.0;
+// !! End changable parameters
+
+const A4_PAGE_WIDTH: f32 = 595.27559100; // fixed (is a fact)
+const A4_PAGE_HEIGHT: f32 = 841.88976400; // fixed (is a fact)
+const OUTLINE_OFFSET_FACTOR: f32 = TOTAL_SCALING_FACTOR * 20.0; // fixed (fit parameter)
+const IMAGE_SCALING_FACTOR: f32 = TOTAL_SCALING_FACTOR * 20.0; // fixed (fit parameter)
+const IMAGE_OFFSET_FACTOR: f32 = TOTAL_SCALING_FACTOR * 20.0; // fixed (fit parameter)
 const INK_SCALING_FACTOR: f32 = TOTAL_SCALING_FACTOR * 16.0 / 1000.0; // fixed (fit paramter)
 const INK_OFFSET_SCALING_FACTOR: f32 = 1270.0; // fixed (fit paramter)
 
@@ -77,7 +80,10 @@ fn output_file(page_xml: String, file_name: String) {
     file_output.push_str("</xournal>");
 
     // export to xml for debug
-    fs::write(format!("{}.xml", file_name), file_output.clone()).expect("Couldn't write xml file");
+    if WRITE_XML_FOR_DEBUG {
+        fs::write(format!("{}.xml", file_name), file_output.clone()).expect("Couldn't write xml file");
+    }
+
     // gzip and export into xopp format
     let f = File::create(format!("{}.xopp", file_name)).expect("Couldn't create .xopp file");
     let mut gz = GzBuilder::new()
@@ -183,7 +189,7 @@ fn render_image(image: &Image, outline_offset: Option<(f32, f32)>, size_watcher:
     // println!("height:{}", height);
     // println!("offset_horizontal:{}", offset_horizontal);
     // println!("offset_vertical:{}", offset_vertical);
-    println!("outline_offset_h:{} outline_offset_v:{}", outline_offset.unwrap_or((0.0, 0.0)).0, outline_offset.unwrap_or((0.0, 0.0)).1);
+    // println!("outline_offset_h:{} outline_offset_v:{}", outline_offset.unwrap_or((0.0, 0.0)).0, outline_offset.unwrap_or((0.0, 0.0)).1);
 
     let mut image_content = String::from(format!("<image left=\"{}\" top=\"{}\" right=\"{}\" bottom=\"{}\">", 
                                                                 size_watcher.check_x(offset_horizontal), 
