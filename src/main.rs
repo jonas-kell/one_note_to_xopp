@@ -11,10 +11,11 @@ use base64::{engine::general_purpose, Engine as _};
 
 const A4_PAGE_WIDTH: f32 = 595.27559100;
 const A4_PAGE_HEIGHT: f32 = 841.88976400;
+const MIN_PAGE_PADDING: f32 = 30.0;
 const SPLIT_PAGES: bool = true;
 
 const TOTAL_SCALING_FACTOR: f32 = 1.0;
-const OUTLINE_OFFSET_FACTOR: f32 = 20.0; // fixed (fit parameter) - so far not completely working, // TODO indent system
+const OUTLINE_OFFSET_FACTOR: f32 = 20.0; // fixed (fit parameter) - so far not completely working, // TODO mistake in leaving out indent system?
 const IMAGE_SCALING_FACTOR: f32 = TOTAL_SCALING_FACTOR * 20.0; // fixed (fit parameter)
 const IMAGE_OFFSET_FACTOR: f32 = 1.0; // fixed (fit parameter - so far no examples where this was needed)
 const INK_WIDTH_SCALING_FACTOR: f32 = 1.0;
@@ -89,16 +90,18 @@ fn output_file(page_xml: String, file_name: String) {
 
 fn render_page(page: &Page) -> String {
     let mut page_output = String::new();
+    
+    let mut size_watcher = SizeWatcher::new();
 
     let page_content: String = page
         .contents()
         .iter()
-        .map(|content| render_page_content(content))
+        .map(|content| render_page_content(content, &mut size_watcher))
         .collect();
 
     page_output.push_str(&format!("<page width=\"{}\" height=\"{}\">
         <background type=\"solid\" color=\"#ffffffff\" style=\"graph\"/>
-        <layer>\n", A4_PAGE_WIDTH, A4_PAGE_HEIGHT));
+        <layer>\n", size_watcher.size_x + MIN_PAGE_PADDING, size_watcher.size_y + MIN_PAGE_PADDING));
 
     page_output.push_str(&page_content);
 
@@ -107,12 +110,12 @@ fn render_page(page: &Page) -> String {
     return page_output;
 }
 
-fn render_page_content(content: &PageContent) -> String {
+fn render_page_content(content: &PageContent, size_watcher: &mut SizeWatcher) -> String {
     match content {
-        PageContent::Outline(outline) => render_outline(outline),
-        PageContent::Image(image) => render_image(image, None),
-        PageContent::EmbeddedFile(file) => render_embedded_file(file),
-        PageContent::Ink(ink) => render_ink(ink),
+        PageContent::Outline(outline) => render_outline(outline, size_watcher),
+        PageContent::Image(image) => render_image(image, None, size_watcher),
+        PageContent::EmbeddedFile(file) => render_embedded_file(file, size_watcher),
+        PageContent::Ink(ink) => render_ink(ink, size_watcher),
         PageContent::Unknown => {
             println!("Page with unknown content");
             String::new()
@@ -120,7 +123,7 @@ fn render_page_content(content: &PageContent) -> String {
     }
 }
 
-fn render_outline(outline: &Outline) -> String {
+fn render_outline(outline: &Outline, size_watcher: &mut SizeWatcher) -> String {
     let mut contents = String::new();
     let outline_offset = (outline.offset_horizontal().unwrap_or(0.0), outline.offset_vertical().unwrap_or(0.0));
     
@@ -133,7 +136,7 @@ fn render_outline(outline: &Outline) -> String {
         let outline_content: String = outline_element
             .contents()
             .iter()
-            .map(|content| render_outline_content(content, Some(outline_offset)))
+            .map(|content| render_outline_content(content, Some(outline_offset), size_watcher))
             .collect();
         contents.push_str(&outline_content);
     }
@@ -154,13 +157,13 @@ fn flatten_outline_items<'a>(
     }))
 }
 
-fn render_outline_content(content: &Content, outline_offset: Option<(f32, f32)>) -> String {
+fn render_outline_content(content: &Content, outline_offset: Option<(f32, f32)>, size_watcher: &mut SizeWatcher) -> String {
     match content {
-        Content::RichText(text) => render_rich_text(text),
-        Content::Image(image) => render_image(image, outline_offset),
-        Content::EmbeddedFile(file) => render_embedded_file(file),
-        Content::Table(table) => render_table(table),
-        Content::Ink(ink) => render_ink(ink),
+        Content::RichText(text) => render_rich_text(text, size_watcher),
+        Content::Image(image) => render_image(image, outline_offset, size_watcher),
+        Content::EmbeddedFile(file) => render_embedded_file(file, size_watcher),
+        Content::Table(table) => render_table(table, size_watcher),
+        Content::Ink(ink) => render_ink(ink, size_watcher),
         Content::Unknown => {
             println!("Outline with unknown content");
             String::new()
@@ -168,7 +171,7 @@ fn render_outline_content(content: &Content, outline_offset: Option<(f32, f32)>)
     }
 }
 
-fn render_image(image: &Image, outline_offset: Option<(f32, f32)>) -> String {
+fn render_image(image: &Image, outline_offset: Option<(f32, f32)>, size_watcher: &mut SizeWatcher) -> String {
     let image_base_64: String = general_purpose::STANDARD.encode(&image.data().unwrap_or_default());
 
     let width= image.layout_max_width().unwrap_or_else(|| 100.0) * IMAGE_SCALING_FACTOR;
@@ -182,35 +185,35 @@ fn render_image(image: &Image, outline_offset: Option<(f32, f32)>) -> String {
     // println!("offset_vertical:{}", offset_vertical);
 
     let mut image_content = String::from(format!("<image left=\"{}\" top=\"{}\" right=\"{}\" bottom=\"{}\">", 
-                                                                offset_horizontal, 
-                                                                offset_vertical, 
-                                                                offset_horizontal + width, 
-                                                                offset_vertical + height));
+                                                                size_watcher.check_x(offset_horizontal), 
+                                                                size_watcher.check_y(offset_vertical), 
+                                                                size_watcher.check_x(offset_horizontal + width), 
+                                                                size_watcher.check_y(offset_vertical + height)));
     image_content.push_str(&image_base_64);
     image_content.push_str("</image>\n");
 
     return image_content;
 }
 
-fn render_table(_table: &Table) -> String {
+fn render_table(_table: &Table, _size_watcher: &mut SizeWatcher) -> String {
     println!("{}", "Rendering tables not implemented");
 
     return String::from("");
 }
 
-fn render_rich_text(_text: &RichText) -> String {
+fn render_rich_text(_text: &RichText, _size_watcher: &mut SizeWatcher) -> String {
     println!("{}", "Rendering rich text not implemented");
 
     return String::from("");
 }
 
-fn render_embedded_file(_file: &EmbeddedFile) -> String {
+fn render_embedded_file(_file: &EmbeddedFile, _size_watcher: &mut SizeWatcher) -> String {
     println!("{}", "Rendering embedded file not implemented");
 
     return String::from("");
 }
 
-fn render_ink(ink: &Ink) -> String {
+fn render_ink(ink: &Ink, size_watcher: &mut SizeWatcher) -> String {
     if ink.ink_strokes().is_empty() {
         return String::new();
     }
@@ -254,9 +257,9 @@ fn render_ink(ink: &Ink) -> String {
             let mut last_x = start.x() + offset_horizontal * INK_OFFSET_SCALING_FACTOR;
             let mut last_y = start.y() + offset_vertical * INK_OFFSET_SCALING_FACTOR;
     
-            image_content.push_str(&format!("{} {} ", last_x * INK_SCALING_FACTOR, last_y * INK_SCALING_FACTOR));
+            image_content.push_str(&format!("{} {} ", size_watcher.check_x(last_x * INK_SCALING_FACTOR), size_watcher.check_y(last_y * INK_SCALING_FACTOR)));
             for point in ink_stroke.path()[1..].iter() {
-                image_content.push_str(&format!("{} {} ", (last_x + point.x()) * INK_SCALING_FACTOR, (last_y + point.y()) * INK_SCALING_FACTOR));
+                image_content.push_str(&format!("{} {} ", size_watcher.check_x((last_x + point.x()) * INK_SCALING_FACTOR), size_watcher.check_y((last_y + point.y()) * INK_SCALING_FACTOR)));
                 last_x = last_x + point.x();
                 last_y = last_y + point.y();
             }
@@ -265,4 +268,36 @@ fn render_ink(ink: &Ink) -> String {
     }
 
     return image_content;
+}
+
+struct SizeWatcher {
+    pub size_x: f32,
+    pub size_y: f32,
+}
+
+impl SizeWatcher {
+    pub fn new() -> SizeWatcher {
+        SizeWatcher {
+            size_x: A4_PAGE_WIDTH,
+            size_y: A4_PAGE_HEIGHT,
+        }
+    }
+
+    pub fn check_x (&mut self, x: f32) -> f32 {
+
+        if x > self.size_x {
+            self.size_x = x;
+        }
+
+        return x; // always return the input for function chaining
+    }
+
+    pub fn check_y (&mut self, y: f32) -> f32 {
+
+        if y > self.size_y {
+            self.size_y = y;
+        }
+
+        return y; // always return the input for function chaining
+    }
 }
