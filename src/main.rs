@@ -12,7 +12,7 @@ use base64::{engine::general_purpose, Engine as _};
 const A4_PAGE_WIDTH: f32 = 595.27559100;
 const A4_PAGE_HEIGHT: f32 = 841.88976400;
 const TOTAL_SCALING_FACTOR: f32 = 1.0;
-const OUTLINE_OFFSET_FACTOR: f32 = 20.0; // fixed (fit parameter)
+const OUTLINE_OFFSET_FACTOR: f32 = 20.0; // fixed (fit parameter) - so far not completely working, // TODO indent system
 const IMAGE_SCALING_FACTOR: f32 = TOTAL_SCALING_FACTOR * 20.0; // fixed (fit parameter)
 const IMAGE_OFFSET_FACTOR: f32 = 1.0; // fixed (fit parameter - so far no examples where this was needed)
 const INK_WIDTH_SCALING_FACTOR: f32 = 1.0;
