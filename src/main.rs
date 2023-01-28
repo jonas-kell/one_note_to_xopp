@@ -221,7 +221,7 @@ fn render_ink(ink: &Ink) -> String {
             let rem = (rem - g) / 256;
             let b = rem % 256;
     
-            format!("#{:x}{:x}{:x}", r, g, b)
+            format!("#{:x}{:x}{:x}ff", r, g, b)
         } else {
             "black".to_string()
         };
