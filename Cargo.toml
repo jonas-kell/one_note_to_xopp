@@ -1,7 +1,14 @@
 [package]
-name = "one_note_xml_extractor"
+name = "one_note_to_xopp"
 version = "0.1.0"
 edition = "2021"
+authors = ["Jonas Kell <jonas-kell@web.de>"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/jonas-kell/one_note_to_xopp"
+description = "A converter from .one to .xopp files."
+keywords = ["onenote", "parser", "xopp", "transpiler"]
+categories = ["parser-implementations"]
 
 [dependencies]
 onenote_parser = { version = "0.3.0", default-features = false }
