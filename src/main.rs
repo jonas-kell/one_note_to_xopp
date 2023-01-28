@@ -12,8 +12,9 @@ use base64::{engine::general_purpose, Engine as _};
 const A4_PAGE_WIDTH: f32 = 595.27559100;
 const A4_PAGE_HEIGHT: f32 = 841.88976400;
 const TOTAL_SCALING_FACTOR: f32 = 1.0;
+const OUTLINE_OFFSET_FACTOR: f32 = 20.0; // fixed (fit parameter)
 const IMAGE_SCALING_FACTOR: f32 = TOTAL_SCALING_FACTOR * 20.0; // fixed (fit parameter)
-const IMAGE_OFFSET_FACTOR: f32 = 20.0;
+const IMAGE_OFFSET_FACTOR: f32 = 1.0; // fixed (fit parameter - so far no examples where this was needed)
 const INK_WIDTH_SCALING_FACTOR: f32 = 1.0;
 const INK_SCALING_FACTOR: f32 = TOTAL_SCALING_FACTOR * 16.0 / 1000.0; // fixed (fit paramter)
 const INK_OFFSET_SCALING_FACTOR: f32 = 1285.0; // fixed (fit paramter)
@@ -95,7 +96,7 @@ format!("<page width=\"{}\" height=\"{}\">
 fn render_page_content(content: &PageContent) -> String {
     match content {
         PageContent::Outline(outline) => render_outline(outline),
-        PageContent::Image(image) => render_image(image),
+        PageContent::Image(image) => render_image(image, None),
         PageContent::EmbeddedFile(file) => render_embedded_file(file),
         PageContent::Ink(ink) => render_ink(ink),
         PageContent::Unknown => {
@@ -107,6 +108,7 @@ fn render_page_content(content: &PageContent) -> String {
 
 fn render_outline(outline: &Outline) -> String {
     let mut contents = String::new();
+    let outline_offset = (outline.offset_horizontal().unwrap_or(0.0), outline.offset_vertical().unwrap_or(0.0));
     
     for outline_element in flatten_outline_items(outline.items()) {
 
@@ -117,7 +119,7 @@ fn render_outline(outline: &Outline) -> String {
         let outline_content: String = outline_element
             .contents()
             .iter()
-            .map(|content| render_outline_content(content))
+            .map(|content| render_outline_content(content, Some(outline_offset)))
             .collect();
         contents.push_str(&outline_content);
     }
@@ -138,10 +140,10 @@ fn flatten_outline_items<'a>(
     }))
 }
 
-fn render_outline_content(content: &Content) -> String {
+fn render_outline_content(content: &Content, outline_offset: Option<(f32, f32)>) -> String {
     match content {
         Content::RichText(text) => render_rich_text(text),
-        Content::Image(image) => render_image(image),
+        Content::Image(image) => render_image(image, outline_offset),
         Content::EmbeddedFile(file) => render_embedded_file(file),
         Content::Table(table) => render_table(table),
         Content::Ink(ink) => render_ink(ink),
@@ -152,13 +154,13 @@ fn render_outline_content(content: &Content) -> String {
     }
 }
 
-fn render_image(image: &Image) -> String {
+fn render_image(image: &Image, outline_offset: Option<(f32, f32)>) -> String {
     let image_base_64: String = general_purpose::STANDARD.encode(&image.data().unwrap_or_default());
 
     let width= image.layout_max_width().unwrap_or_else(|| 100.0) * IMAGE_SCALING_FACTOR;
     let height = image.layout_max_height().unwrap_or_else(|| 100.0) * IMAGE_SCALING_FACTOR;
-    let offset_horizontal = image.offset_horizontal().unwrap_or_else(|| 0.0) * IMAGE_OFFSET_FACTOR;
-    let offset_vertical = image.offset_vertical().unwrap_or_else(|| 0.0) * IMAGE_OFFSET_FACTOR;
+    let offset_horizontal = image.offset_horizontal().unwrap_or_else(|| 0.0) * IMAGE_OFFSET_FACTOR + outline_offset.unwrap_or((0.0, 0.0)).0 * OUTLINE_OFFSET_FACTOR;
+    let offset_vertical = image.offset_vertical().unwrap_or_else(|| 0.0) * IMAGE_OFFSET_FACTOR + outline_offset.unwrap_or((0.0, 0.0)).1 * OUTLINE_OFFSET_FACTOR;
 
     // println!("width:{}", width);
     // println!("height:{}", height);
