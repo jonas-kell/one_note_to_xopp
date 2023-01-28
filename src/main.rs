@@ -9,12 +9,14 @@ use flate2::Compression;
 use std::fs;
 use base64::{engine::general_purpose, Engine as _};
 
-const PAGE_COORDINATES_FACTOR: f32 = 20.0;
 const A4_PAGE_WIDTH: f32 = 595.27559100;
 const A4_PAGE_HEIGHT: f32 = 841.88976400;
-const INK_SCALING_FACTOR: f32 = 20.0 / 1000.0;
+const TOTAL_SCALING_FACTOR: f32 = 1.0;
+const IMAGE_SCALING_FACTOR: f32 = TOTAL_SCALING_FACTOR * 20.0; // fixed (fit parameter)
+const IMAGE_OFFSET_FACTOR: f32 = 20.0;
 const INK_WIDTH_SCALING_FACTOR: f32 = 1.0;
-const INK_OFFSET_SCALING_FACTOR: f32 = 1285.0;
+const INK_SCALING_FACTOR: f32 = TOTAL_SCALING_FACTOR * 16.0 / 1000.0; // fixed (fit paramter)
+const INK_OFFSET_SCALING_FACTOR: f32 = 1285.0; // fixed (fit paramter)
 
 fn main() {
     for element in std::path::Path::new(r"./").read_dir().unwrap() {
@@ -153,10 +155,10 @@ fn render_outline_content(content: &Content) -> String {
 fn render_image(image: &Image) -> String {
     let image_base_64: String = general_purpose::STANDARD.encode(&image.data().unwrap_or_default());
 
-    let width= image.layout_max_width().unwrap_or_else(|| 100.0);
-    let height = image.layout_max_height().unwrap_or_else(|| 100.0);
-    let offset_horizontal = image.offset_horizontal().unwrap_or_else(|| 0.0);
-    let offset_vertical = image.offset_vertical().unwrap_or_else(|| 0.0);
+    let width= image.layout_max_width().unwrap_or_else(|| 100.0) * IMAGE_SCALING_FACTOR;
+    let height = image.layout_max_height().unwrap_or_else(|| 100.0) * IMAGE_SCALING_FACTOR;
+    let offset_horizontal = image.offset_horizontal().unwrap_or_else(|| 0.0) * IMAGE_OFFSET_FACTOR;
+    let offset_vertical = image.offset_vertical().unwrap_or_else(|| 0.0) * IMAGE_OFFSET_FACTOR;
 
     // println!("width:{}", width);
     // println!("height:{}", height);
@@ -164,10 +166,10 @@ fn render_image(image: &Image) -> String {
     // println!("offset_vertical:{}", offset_vertical);
 
     let mut image_content = String::from(format!("<image left=\"{}\" top=\"{}\" right=\"{}\" bottom=\"{}\">", 
-                                                                page_coordinates(offset_horizontal), 
-                                                                page_coordinates(offset_vertical), 
-                                                                page_coordinates(offset_horizontal + width), 
-                                                                page_coordinates(offset_vertical + height)));
+                                                                offset_horizontal, 
+                                                                offset_vertical, 
+                                                                offset_horizontal + width, 
+                                                                offset_vertical + height));
     image_content.push_str(&image_base_64);
     image_content.push_str("</image>\n");
 
@@ -246,8 +248,4 @@ fn render_ink(ink: &Ink) -> String {
     }
 
     return image_content;
-}
-
-fn page_coordinates(inches: f32) -> String {
-    format!("{}", (inches * PAGE_COORDINATES_FACTOR).round())
 }
