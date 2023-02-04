@@ -40,6 +40,19 @@ The behavior can be adapted with CLI Arguments. They are documented when running
  ./target/release/one_note_to_xopp --help
 ```
 
+### Error messages
+
+If error messages happen, try opening the .one section in the OneNote Browser version. That sometimes is enough to fix it.
+
+The following error call:
+
+```cmd
+thread 'main' panicked at 'called `Result::unwrap()` on an `Err` value: Error { kind: MalformedOneNoteFileData("ink stroke node has no ink bias") }', src/main.rs:36:67
+```
+
+Can be caused by the `Coordinate System` and other shape tools. These are some kind of ink stroke, however not real ink strokes and have a weird format.
+Delete them in the browser version of OneNote and replace with normal lines.
+
 ## Where to get my .one files
 
 To acquire the .one files from cour OneDrive, take a look [here](https://github.com/msiemens/one2html#usage).
