@@ -244,7 +244,7 @@ fn render_ink(ink: &Ink, size_watcher: &mut SizeWatcher) -> String {
     
     let mut image_content = String::new();
     for ink_stroke in ink.ink_strokes() {
-        if ink_stroke.path().len() >= 4 { // if not enough points, will fail
+        if ink_stroke.path().len() >= 2 { // no points, will fail
             let color = if let Some(value) = ink_stroke.color() {
                 let r = value % 256;
         
@@ -272,6 +272,9 @@ fn render_ink(ink: &Ink, size_watcher: &mut SizeWatcher) -> String {
                 image_content.push_str(&format!("{} {} ", size_watcher.check_x((last_x + point.x()) * CFG.ink_scaling_factor()), size_watcher.check_y((last_y + point.y()) * CFG.ink_scaling_factor())));
                 last_x = last_x + point.x();
                 last_y = last_y + point.y();
+            }
+            if ink_stroke.path().len() < 4 { // if not enough points, will fail
+                image_content.push_str(&format!("{} {} ", size_watcher.check_x(last_x * CFG.ink_scaling_factor()), size_watcher.check_y(last_y * CFG.ink_scaling_factor())));
             }
             image_content.push_str("</stroke>\n");
         }
